@@ -268,6 +268,8 @@ EST_ERROR est_init_logger (EST_LOG_LEVEL lvl, void (*loggerfunc)(char *, va_list
         est_log_func = &est_logger_stderr;
     }
 
+    wolfSSL_Debugging_ON();
+
     /*
      * Set the desired logging level
      */
@@ -492,14 +494,21 @@ static BIO * est_get_certs_pkcs7 (BIO *in, int do_base_64)
     BIO *b64;
     int buflen = 0;
 
-
     /*
      * Create a PKCS7 object 
      */
-    if ((p7 = PKCS7_new()) == NULL) {
+    if ((p7 =
+#ifndef ENABLE_WOLFSSL
+            PKCS7_new()
+#else
+            wolfSSL_PKCS7_SIGNED_new()
+#endif
+            ) == NULL) {
         EST_LOG_ERR("pkcs7_new failed");
 	goto cleanup;
     }
+
+#ifndef ENABLE_WOLFSSL
     /*
      * Create the PKCS7 signed object
      */
@@ -514,6 +523,11 @@ static BIO * est_get_certs_pkcs7 (BIO *in, int do_base_64)
         EST_LOG_ERR("ASN1_integer_set failed");
 	goto cleanup;
     }
+#else
+    (void)p7s;
+    p7->version = 1;
+    p7->hashOID = SHAh;
+#endif
 
     /*
      * Create a stack of X509 certs
@@ -554,6 +568,9 @@ static BIO * est_get_certs_pkcs7 (BIO *in, int do_base_64)
 	out = BIO_push(b64, out);
     }
 
+#ifdef ENABLE_WOLFSSL
+    buflen = wolfSSL_PKCS7_encode_certs(p7, cert_stack, out);
+#else
     p7->type = OBJ_nid2obj(NID_pkcs7_signed);
     p7->d.sign = p7s;
     p7s->contents->type = OBJ_nid2obj(NID_pkcs7_data);
@@ -563,6 +580,7 @@ static BIO * est_get_certs_pkcs7 (BIO *in, int do_base_64)
      * Convert from PEM to PKCS7
      */
     buflen = i2d_PKCS7_bio(out, p7);
+#endif
     if (!buflen) {
         EST_LOG_ERR("PEM_write_bio_PKCS7 failed");
 	ossl_dump_ssl_errors();
@@ -1186,13 +1204,16 @@ void est_hex_to_str (char *dst, unsigned char *src, int len)
  */
 EST_ERROR est_enable_crl (EST_CTX *ctx)
 {   
+#ifndef ENABLE_WOLFSSL
     X509_VERIFY_PARAM *vpm;
+#endif
     
     if (!ctx) {
 	EST_LOG_ERR("Null context");
         return (EST_ERR_NO_CTX);
     }
 
+#ifndef ENABLE_WOLFSSL
     /*
      * Client code and server code handle the processing of this
      * flag differently.  The client side looks at the above
@@ -1208,6 +1229,18 @@ EST_ERROR est_enable_crl (EST_CTX *ctx)
                                     X509_V_FLAG_CRL_CHECK_ALL);
         SSL_CTX_set1_param(ctx->ssl_ctx, vpm);
     }
+#else
+    {
+        WOLFSSL_X509_STORE* ctx_store =
+                wolfSSL_CTX_get_cert_store(ctx->ssl_ctx);
+        if (wolfSSL_X509_STORE_set_flags(ctx_store,
+                WOLFSSL_CRL_CHECKALL | WOLFSSL_CRL_CHECK)
+                != WOLFSSL_SUCCESS) {
+            EST_LOG_ERR("wolfSSL_X509_STORE_set_flags error");
+            return (EST_ERR_NO_CTX);
+        }
+    }
+#endif
 
     ctx->enable_crl = 1;
     return (EST_ERR_NONE);

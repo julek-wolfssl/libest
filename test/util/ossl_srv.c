@@ -79,6 +79,10 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <ctype.h>
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#include <openssl/buffer.h>
+#endif
 #include <openssl/err.h>
 #include <openssl/engine.h>
 #include <openssl/conf.h>
@@ -150,7 +154,9 @@ typedef struct {
 	unsigned long mask;
 } NAME_EX_TBL;
 
+#ifndef ENABLE_WOLFSSL
 static UI_METHOD *ui_method = NULL;
+#endif
 
 #if defined(_WIN32) || defined(_WIN64) 
 #define strcasecmp _stricmp 
@@ -351,8 +357,10 @@ EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdin,
 			BIO_printf(err,"no engine specified\n");
 		else
 			{
+#ifndef ENABLE_WOLFSSL
 			pkey = (EVP_PKEY *)ENGINE_load_private_key(e, file,
 				ui_method, &cb_data);
+#endif
 			if (!pkey) 
 				{
 				BIO_printf(err,"cannot load %s from engine\n",key_descrip);
@@ -873,7 +881,9 @@ int app_passwd(BIO *err, char *arg1, char *arg2, char **pass1, char **pass2)
 
 int password_callback(char *buf, int bufsiz, int verify, PW_CB_DATA *cb_tmp)
 {
-	UI *ui = NULL;
+#ifndef ENABLE_WOLFSSL
+    UI *ui = NULL;
+#endif
 	int res = 0;
 	const char *prompt_info = NULL;
 	const char *password = NULL;
@@ -896,6 +906,7 @@ int password_callback(char *buf, int bufsiz, int verify, PW_CB_DATA *cb_tmp)
 		return res;
 		}
 
+#ifndef ENABLE_WOLFSSL
 	ui = UI_new_method(ui_method);
 	if (ui)
 		{
@@ -950,6 +961,7 @@ int password_callback(char *buf, int bufsiz, int verify, PW_CB_DATA *cb_tmp)
 		UI_free(ui);
 		OPENSSL_free(prompt);
 		}
+#endif
 	return res;
 }
 
@@ -1681,7 +1693,7 @@ static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
 			BIO_printf(bio_err,"\nemailAddress type needs to be of type IA5STRING\n");
 			goto err;
 			}
-		if ((str->type != V_ASN1_BMPSTRING) && (str->type != V_ASN1_UTF8STRING))
+		if (str && (str->type != V_ASN1_BMPSTRING) && (str->type != V_ASN1_UTF8STRING))
 			{
 			j=ASN1_PRINTABLE_type(str->data,str->length);
 			if (	((j == V_ASN1_T61STRING) &&
@@ -1963,7 +1975,7 @@ again2:
 
 	/* Lets add the extensions, if there are any */
 	if (ext_sect) {
-            X509V3_CTX ctx;
+            X509V3_CTX ctx = {0};
 #ifdef HAVE_OLD_OPENSSL        
             if (ci->version == NULL)
                 if ((ci->version=ASN1_INTEGER_new()) == NULL)
@@ -2783,7 +2795,7 @@ BIO * ossl_simple_enroll (const char *p10buf, int p10len, char *configfile)
 			}
 			if (extensions) {
 				/* Check syntax of file */
-				X509V3_CTX ctx;
+				X509V3_CTX ctx = {0};
 				X509V3_set_ctx_test(&ctx);
 				X509V3_set_nconf(&ctx, conf);
 				if (!X509V3_EXT_add_nconf(conf, &ctx, extensions, NULL)) {
@@ -2894,8 +2906,13 @@ BIO * ossl_simple_enroll (const char *p10buf, int p10len, char *configfile)
                         p = (const char *) x->cert_info->serialNumber->data;
 #else            
                         ASN1_INTEGER *serialNumber = X509_get_serialNumber(x);
+#ifndef ENABLE_WOLFSSL
                         j = ASN1_STRING_length(serialNumber);
                         p = (const char *)ASN1_STRING_get0_data(serialNumber);
+#else
+                        j = serialNumber->length;
+                        p = (const char *)serialNumber->data;
+#endif
 #endif
                         
 			BUF_strlcat(buf[2],"/",sizeof(buf[2]));
@@ -3036,6 +3053,7 @@ static BIO * ossl_get_certs_pkcs7(BIO *in)
 	printf("\npkcs7_new failed in %s", __FUNCTION__);
         return NULL;
     }
+#ifndef ENABLE_WOLFSSL
     if ((p7s=PKCS7_SIGNED_new()) == NULL) { 
 	printf("\npkcs7_signed_new failed in %s", __FUNCTION__);
         return NULL;
@@ -3047,12 +3065,19 @@ static BIO * ossl_get_certs_pkcs7(BIO *in)
 	printf("\nASN1_integer_set failed in %s", __FUNCTION__);
 	return NULL;
     }
+#else
+    (void)p7s;
+    p7->version = 1;
+    p7->hashOID = SHAh;
+#endif
 
     if ((cert_stack=sk_X509_new_null()) == NULL) {
 	printf("\nstack mallock failed in %s", __FUNCTION__);
         return NULL;
     }
+#ifndef ENABLE_WOLFSSL
     p7s->cert=cert_stack;
+#endif
 
     if (ossl_add_certs_from_BIO(cert_stack, in) < 0) {
 	printf("\nerror loading certificates\n");
@@ -3079,7 +3104,11 @@ static BIO * ossl_get_certs_pkcs7(BIO *in)
         return NULL;
     }
     out = BIO_push(b64, out);
-    rv = i2d_PKCS7_bio(out,p7);
+#ifdef ENABLE_WOLFSSL
+    rv = wolfSSL_PKCS7_encode_certs(p7, cert_stack, out);
+#else
+    rv = i2d_PKCS7_bio(out, p7);
+#endif
     (void)BIO_flush(out);
     if (!rv) {
 	printf("\nerror in PEM_write_bio_PKCS7\n");

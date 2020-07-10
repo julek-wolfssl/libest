@@ -8,10 +8,10 @@
  *------------------------------------------------------------------
  */
 #include <stdio.h>
+#include <est.h>
 #include <openssl/err.h>
 #include <openssl/engine.h>
 #include <openssl/conf.h>
-#include <est.h>
 #ifdef HAVE_CUNIT
 #include "CUnit/Basic.h"
 #include "CUnit/Automated.h"

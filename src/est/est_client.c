@@ -31,6 +31,9 @@
 #include <wincrypt.h>
 #endif
 #include <sys/types.h>
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #include <openssl/ssl.h>
 #include <openssl/cms.h>
 #include <openssl/rand.h>
@@ -262,7 +265,6 @@ static int est_client_cacert_verify_cb (int ok, X509_STORE_CTX *ctx)
 static EST_ERROR est_client_remove_crls (EST_CTX *ctx, unsigned char *cacerts,
                                          int *cacerts_len, PKCS7 *p7)
 {
-    int nid = 0;
     int crls_found = 0;
     BIO *b64_enc = NULL;
     BIO *p7bio_out = NULL;
@@ -270,6 +272,8 @@ static EST_ERROR est_client_remove_crls (EST_CTX *ctx, unsigned char *cacerts,
     char *new_cacerts_buf = NULL;
     int count = 0;    
     
+#ifndef ENABLE_WOLFSSL
+    int nid = 0;
     nid=OBJ_obj2nid(p7->type);
     switch (nid)
         {
@@ -292,6 +296,9 @@ static EST_ERROR est_client_remove_crls (EST_CTX *ctx, unsigned char *cacerts,
             return (EST_ERR_CACERT_VERIFICATION);            
             break;
         }
+#else
+    /* wolfSSL doesn't parse crl's in pkcs7 */
+#endif
 
     /*
      * If CRLs were removed, then the original PKCS7 buffer needs to be
@@ -443,8 +450,10 @@ static EST_ERROR create_PKCS7 (unsigned char *cacerts_decoded, int cacerts_decod
 
 static EST_ERROR PKCS7_to_stack (PKCS7 *pkcs7, STACK_OF(X509) **stack) 
 {
+#ifdef ENABLE_WOLFSSL
+    *stack = wolfSSL_PKCS7_to_stack(pkcs7);
+#else
     int nid = 0;
-
     nid=OBJ_obj2nid(pkcs7->type);
     switch (nid)
         {
@@ -459,6 +468,7 @@ static EST_ERROR PKCS7_to_stack (PKCS7 *pkcs7, STACK_OF(X509) **stack)
             return (EST_ERR_CACERT_VERIFICATION);
             break;
         }
+#endif
 
     if (*stack == NULL) {
         EST_LOG_ERR("X509 certs not found within PKCS7 buffer");
@@ -588,7 +598,9 @@ static EST_ERROR verify_cacert_resp (EST_CTX *ctx, unsigned char *cacerts,
 
     for (i=0; i<sk_X509_num(stack); i++) {
 
-        if (!X509_STORE_CTX_init(store_ctx, trusted_cacerts_store, NULL, stack)) {
+        current_cert = sk_X509_value(stack, i);
+        EST_LOG_INFO("Adding cert to store (%s)", X509_get_subject_name(current_cert));
+        if (!X509_STORE_CTX_init(store_ctx, trusted_cacerts_store, current_cert, stack)) {
             EST_LOG_ERR("Unable to initialize the new store context");
             ossl_dump_ssl_errors();
 
@@ -599,9 +611,6 @@ static EST_ERROR verify_cacert_resp (EST_CTX *ctx, unsigned char *cacerts,
             
             return ( EST_ERR_MALLOC);
         }
-        current_cert = sk_X509_value(stack, i);
-        EST_LOG_INFO("Adding cert to store (%s)", X509_get_subject_name(current_cert));
-	X509_STORE_CTX_set_cert(store_ctx, current_cert);
         
         rv = X509_verify_cert(store_ctx);
         if (!rv) {
@@ -783,7 +792,9 @@ static int cert_verify_cb (int ok, X509_STORE_CTX *x_ctx)
 static EST_ERROR est_client_init_ssl_ctx (EST_CTX *ctx)
 {
     SSL_CTX     *s_ctx;
+#ifndef ENABLE_WOLFSSL
     X509_VERIFY_PARAM *vpm = NULL;
+#endif
     EST_ERROR rv = EST_ERR_NONE;
 
     est_log_version();
@@ -842,6 +853,7 @@ static EST_ERROR est_client_init_ssl_ctx (EST_CTX *ctx)
     SSL_CTX_set_cert_store(s_ctx, ctx->trusted_certs_store);
     ctx->trusted_certs_store = NULL;        
 
+#ifndef ENABLE_WOLFSSL
     /*
      * Set up X509 params and assign them to the SSL ctx
      * - Enable CRL checks
@@ -862,6 +874,9 @@ static EST_ERROR est_client_init_ssl_ctx (EST_CTX *ctx)
 
     SSL_CTX_set1_param(s_ctx, vpm);
     X509_VERIFY_PARAM_free(vpm);
+#endif
+
+    wolfSSL_CTX_set_verify_depth(s_ctx, EST_TLS_VERIFY_DEPTH);
 
     /*
      * Save the reference to the SSL session
@@ -874,12 +889,14 @@ static EST_ERROR est_client_init_ssl_ctx (EST_CTX *ctx)
         e_ctx_ssl_exdata_index = SSL_get_ex_new_index(0, "EST Context", NULL, NULL, NULL);    
     }
 
+#ifndef ENABLE_WOLFSSL
     /*
      * This last config setting is not ctx based, but instead, global to the
      * entire libcrypto library.  Need to ensure that CSR string attributes
      * are added in ASCII printable format.
      */
     ASN1_STRING_set_default_mask(B_ASN1_PRINTABLE);
+#endif
     
     return rv;
 }
@@ -1364,7 +1381,7 @@ static int est_client_send_csrattrs_request (EST_CTX *ctx, SSL *ssl,
      */
     ctx->last_http_status = 0;
     write_size = SSL_write(ssl, http_data, hdr_len);
-    if (write_size < 0) {
+    if (write_size <= 0) {
         EST_LOG_ERR("TLS write error");
 	ossl_dump_ssl_errors();
         rv = EST_ERR_SSL_WRITE;
@@ -1623,7 +1640,7 @@ int est_client_send_enroll_request_internal (EST_CTX *ctx, SSL *ssl, BUF_MEM *bp
      */
     ctx->last_http_status = 0;
     write_size = SSL_write(ssl, http_data, hdr_len);
-    if (write_size < 0) {
+    if (write_size <= 0) {
         EST_LOG_ERR("TLS write error");
         ossl_dump_ssl_errors();
         rv = EST_ERR_SSL_WRITE;
@@ -1758,6 +1775,7 @@ EST_ERROR est_client_send_keygen_request(EST_CTX *ctx, SSL *ssl, BUF_MEM *bptr,
 static EST_ERROR est_client_check_x509 (X509 *cert) 
 {
     
+#ifndef ENABLE_WOLFSSL
     /*
      * Make sure the cert is signed
      */
@@ -1783,6 +1801,13 @@ static EST_ERROR est_client_check_x509 (X509 *cert)
 	return (EST_ERR_BAD_X509);
     }    
 #endif
+#else
+    int sz = 0;
+    if (wolfSSL_X509_get_signature(cert, NULL, &sz) != WOLFSSL_SUCCESS || sz == 0) {
+        EST_LOG_ERR("The certificate provided does not contain a signature.");
+        return (EST_ERR_BAD_X509);
+    }
+#endif
     
     return (EST_ERR_NONE);
 }
@@ -1800,6 +1825,7 @@ static EST_ERROR est_client_check_x509 (X509 *cert)
  */
 static void est_client_clear_csr_pop (X509_REQ *csr)
 {
+#ifndef ENABLE_WOLFSSL
     int pos = 0;
     X509_ATTRIBUTE *attr;
 
@@ -1830,6 +1856,9 @@ static void est_client_clear_csr_pop (X509_REQ *csr)
 	    }
 	}
     }
+#else
+    (void)csr;
+#endif
 }
 
 /*
@@ -1889,7 +1918,9 @@ static EST_ERROR est_client_verify_key_and_cert(EST_CTX *ctx, unsigned char **ne
     EST_ERROR rv = EST_ERR_NONE;
     STACK_OF(X509) *x509_stack = NULL;
     EVP_PKEY *der_key = NULL;
+#ifndef ENABLE_WOLFSSL
     int i;
+#endif
     
     X509 *x509_cert = NULL;
     SSL_CTX *test_ctx = NULL;
@@ -1901,12 +1932,16 @@ static EST_ERROR est_client_verify_key_and_cert(EST_CTX *ctx, unsigned char **ne
         goto end;
     }
 
+#ifndef ENABLE_WOLFSSL
     i = OBJ_obj2nid(pkcs7_cert->type);
     if(i == NID_pkcs7_signed) {
         x509_stack = pkcs7_cert->d.sign->cert;
     } else if(i == NID_pkcs7_signedAndEnveloped) {
         x509_stack = pkcs7_cert->d.signed_and_enveloped->cert;
     }
+#else
+    x509_stack = wolfSSL_PKCS7_to_stack(pkcs7_cert);
+#endif
     if (!x509_stack) {
         EST_LOG_ERR("Error while converting pkcs7 to x509");
         rv = EST_ERR_VALIDATION;
@@ -2999,7 +3034,7 @@ static int est_client_send_cacerts_request (EST_CTX *ctx, SSL *ssl,
      */
     ctx->last_http_status = 0;
     write_size = SSL_write(ssl, http_data, hdr_len);
-    if (write_size < 0) {
+    if (write_size <= 0) {
         EST_LOG_ERR("TLS write error");
 	ossl_dump_ssl_errors();
         rv = EST_ERR_SSL_WRITE;

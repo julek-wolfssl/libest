@@ -74,6 +74,9 @@
  * the library. */
 
 
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #ifndef WIN32
 #include <openssl/pem.h>
 #include <openssl/err.h>
@@ -357,7 +360,11 @@ int est_convert_p7b64_to_pem (unsigned char *certs_p7, int certs_len, unsigned c
     int  cacerts_decoded_len = 0;
     BIO *p7bio_in = NULL;
     PKCS7 *p7=NULL;
+#ifndef ENABLE_WOLFSSL
     int i, nid;
+#else
+    int i;
+#endif
     unsigned char *pem_data;
     int pem_len;
 
@@ -408,6 +415,9 @@ int est_convert_p7b64_to_pem (unsigned char *certs_p7, int certs_len, unsigned c
      * Now that we've decoded the certs, get a reference
      * to the stack of certs
      */
+#ifdef ENABLE_WOLFSSL
+    certs = wolfSSL_PKCS7_to_stack(p7);
+#else
     nid=OBJ_obj2nid(p7->type);
     switch (nid)
         {
@@ -423,6 +433,7 @@ int est_convert_p7b64_to_pem (unsigned char *certs_p7, int certs_len, unsigned c
 	    return (-1);
             break;
         }
+#endif
 
     if (!certs) {
         EST_LOG_ERR("Failed to obtain X509 cert stack from PKCS7 data");

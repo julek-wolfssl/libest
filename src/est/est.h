@@ -21,6 +21,11 @@
 #define LIBEST_API
 #endif
 
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#include <openssl/buffer.h>
+#endif
+
 #include <openssl/ssl.h>
 #include <openssl/engine.h>
 #include <openssl/conf.h>

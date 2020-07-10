@@ -329,6 +329,8 @@ static void us748_test2 (void)
  */
 static void us748_test3 (void)
 {
+#ifndef ENABLE_WOLFSSL
+/* wolfSSL doesn't support certificates with DSA keys */
     long rv;
 
     LOG_FUNC_NM
@@ -342,6 +344,7 @@ static void us748_test3 (void)
      * we expect the server to respond with 200
      */
     CU_ASSERT(rv == 200);
+#endif
 }
 
 /*
@@ -478,7 +481,7 @@ static void us748_test7 (void)
     EST_CTX *c_ctx;
     EVP_PKEY *new_pkey;
     unsigned char *pkcs7;
-    int pkcs7_len;
+    int pkcs7_len = 0;
     unsigned char *attr_data;
     int attr_len;
 

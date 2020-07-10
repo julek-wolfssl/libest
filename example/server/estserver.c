@@ -21,6 +21,9 @@
 #include <search.h>
 #endif
 #include <getopt.h>
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #include <openssl/err.h>
 #include <openssl/engine.h>
 #include <openssl/conf.h>
@@ -128,7 +131,9 @@ int trustcerts_len = 0;
 unsigned char *enhcd_cert_truststore = NULL;
 int enhcd_cert_truststore_len = 0;
 
+#ifndef ENABLE_WOLFSSL
 SRP_VBASE *srp_db = NULL;
+#endif
 
 static char valid_token_value[MAX_AUTH_TOKEN_LEN + 1];
 
@@ -352,10 +357,14 @@ int lookup_pkcs10_request (unsigned char *pkcs10, int p10_len)
      * would do this lookup.  But this should be good enough for
      * testing the retry-after logic.
      */
+#ifndef ENABLE_WOLFSSL
 #ifdef HAVE_OLD_OPENSSL
     pkey = X509_PUBKEY_get(req->req_info->pubkey);
 #else
     pkey = X509_PUBKEY_get(X509_REQ_get_X509_PUBKEY(req));
+#endif
+#else
+    pkey = X509_PUBKEY_get(X509_get_X509_PUBKEY(req));
 #endif
     if (!pkey) {
         rv = 1;
@@ -1926,6 +1935,7 @@ int process_http_auth (EST_CTX *ctx, EST_HTTP_AUTH_HDR *ah, X509 *peer_cert,
     return user_valid;
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * This callback is issued during the TLS-SRP handshake.
  * We can use this to get the userid from the TLS-SRP handshake.
@@ -1939,7 +1949,7 @@ int process_http_auth (EST_CTX *ctx, EST_HTTP_AUTH_HDR *ah, X509 *peer_cert,
  */
 static int process_ssl_srp_auth (SSL *s, int *ad, void *arg)
 {
-
+#ifndef ENABLE_WOLFSSL
     char *login = SSL_get_srp_username(s);
     SRP_user_pwd *user;
 
@@ -1971,7 +1981,11 @@ static int process_ssl_srp_auth (SSL *s, int *ad, void *arg)
     login = NULL;
     fflush(stdout);
     return SSL_ERROR_NONE;
+#else
+    return SSL3_AL_FATAL;
+#endif
 }
+#endif
 
 #ifdef HAVE_OLD_OPENSSL
 /*
@@ -2008,9 +2022,11 @@ void cleanup (void)
     est_server_stop(ectx);
     est_destroy(ectx);
 
+#ifndef ENABLE_WOLFSSL
     if (srp_db) {
         SRP_VBASE_free(srp_db);
     }
+#endif
 
 #ifdef HAVE_OLD_OPENSSL    
     /*
@@ -2406,6 +2422,7 @@ int main (int argc, char **argv)
         est_server_disable_pop(ectx);
     }
 
+#ifndef ENABLE_WOLFSSL
     if (srp) {
         srp_db = SRP_VBASE_new(NULL);
         if (!srp_db) {
@@ -2422,6 +2439,7 @@ int main (int argc, char **argv)
             exit(1);
         }
     }
+#endif
 
     if (est_set_ca_enroll_cb(ectx, &process_pkcs10_enrollment)) {
         printf(

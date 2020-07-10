@@ -14,7 +14,11 @@ else
 PTHREAD=-lpthread
 endif
 
+if ENABLED_WOLFSSL
+estserver_LDFLAGS = -L../../src/est/.libs $(DL) $(PTHREAD) -lest -lwolfssl
+else
 estserver_LDFLAGS = -L../../src/est/.libs $(DL) $(PTHREAD) -lest -lssl -lcrypto
+endif
 
 EXTRA_DIST = ossl_srv.h apps.h createCA.sh createCA.bat ext.cnf ESTcommon.sh runserver.sh estExampleCA.cnf extExampleCA.cnf ESTcommon_masa.sh createMASA.sh masa.cnf masa_ExampleCA.cnf
 

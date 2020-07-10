@@ -20,13 +20,13 @@
 #include <fcntl.h>
 #define __USE_GNU
 #include <search.h>
+#include <est.h>
 #include <openssl/err.h>
 #include <openssl/engine.h>
 #include <openssl/conf.h>
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/cms.h>
-#include <est.h>
 #include "ossl_srv.h"
 #include "test_utils.h"
 #include <sys/types.h>
@@ -46,7 +46,9 @@ static int coap_enabled;
 unsigned char *cacerts_raw = NULL;
 int cacerts_len = 0;
 EST_CTX *ectx;
+#ifndef ENABLE_WOLFSSL
 SRP_VBASE *srp_db = NULL;
+#endif
 unsigned char *trustcerts = NULL;
 int trustcerts_len = 0;
 static char conf_file[MAX_FILENAME_LEN];
@@ -297,7 +299,7 @@ static void extract_sub_name (X509 *cert, char *name, int len)
 
     X509_NAME_print_ex(out, subject_nm, 0, XN_FLAG_SEP_SPLUS_SPC);
     BIO_get_mem_ptr(out, &bm);
-    strncpy(name, bm->data, len);
+    memcpy(name, bm->data, len < bm->length ? len : bm->length);
     if (bm->length < len) {
         name[bm->length] = 0;
     } else {
@@ -1033,10 +1035,17 @@ static BIO *get_certs_pkcs7 (BIO *in, int do_base_64)
     /*
      * Create a PKCS7 object 
      */
-    if ((p7 = PKCS7_new()) == NULL) {
+    if ((p7 =
+#ifndef ENABLE_WOLFSSL
+            PKCS7_new()
+#else
+            wolfSSL_PKCS7_SIGNED_new()
+#endif
+            ) == NULL) {
         printf("pkcs7_new failed\n");
 	goto cleanup;
     }
+#ifndef ENABLE_WOLFSSL
     /*
      * Create the PKCS7 signed object
      */
@@ -1051,6 +1060,12 @@ static BIO *get_certs_pkcs7 (BIO *in, int do_base_64)
         printf("ASN1_integer_set failed\n");
 	goto cleanup;
     }
+#else
+    (void)p7s;
+    p7->version = 1;
+    p7->hashOID = SHAh;
+#endif
+
 
     /*
      * Create a stack of X509 certs
@@ -1091,6 +1106,9 @@ static BIO *get_certs_pkcs7 (BIO *in, int do_base_64)
 	out = BIO_push(b64, out);
     }
 
+#ifdef ENABLE_WOLFSSL
+    buflen = wolfSSL_PKCS7_encode_certs(p7, cert_stack, out);
+#else
     p7->type = OBJ_nid2obj(NID_pkcs7_signed);
     p7->d.sign = p7s;
     p7s->contents->type = OBJ_nid2obj(NID_pkcs7_data);
@@ -1100,6 +1118,7 @@ static BIO *get_certs_pkcs7 (BIO *in, int do_base_64)
      * Convert from PEM to PKCS7
      */
     buflen = i2d_PKCS7_bio(out, p7);
+#endif
     if (!buflen) {
         printf("PEM_write_bio_PKCS7 failed\n");
 	st_ossl_dump_ssl_errors();
@@ -1275,6 +1294,7 @@ static int process_http_auth (EST_CTX *ctx, EST_HTTP_AUTH_HDR *ah,
     return user_valid;
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * This callback is issued during the TLS-SRP handshake.  
  * We can use this to get the userid from the TLS-SRP handshake.
@@ -1320,6 +1340,7 @@ static int ssl_srp_server_param_cb (SSL *s, int *ad, void *arg) {
     SRP_user_pwd_free(user);    
     return SSL_ERROR_NONE;
 }
+#endif
 
 static void cleanup() 
 {
@@ -1340,10 +1361,12 @@ static void cleanup()
 	lookup_root = NULL;
     }
 
+#ifndef ENABLE_WOLFSSL
     if (srp_db) {
 	SRP_VBASE_free(srp_db);
 	srp_db = NULL;
     }
+#endif
 
     //We don't shutdown here because there
     //may be other unit test cases in this process
@@ -1693,6 +1716,7 @@ static int st_start_internal (
     }
     DH_free(dh);
 
+#ifndef ENABLE_WOLFSSL
     /*
      * Do we need to enable SRP?
      */
@@ -1712,6 +1736,7 @@ static int st_start_internal (
 	    return(-1);
 	}
     }
+#endif
 
     coap_enabled = enable_coap;
     if (enable_coap) {
@@ -2021,6 +2046,7 @@ int st_start_nocacerts (int listen_port,
     return (rv);
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * Call this to start a simple EST server with SRP.  This server will not
  * be thread safe.  It can only handle a single EST request on
@@ -2099,6 +2125,7 @@ int st_start_srp_tls10 (int listen_port,
 
     return (rv);
 }
+#endif
 
 /*
  * Call this to start a simple EST server with event callbacks.

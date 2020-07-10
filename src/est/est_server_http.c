@@ -42,6 +42,9 @@
 #ifdef WIN32
 #include <WS2tcpip.h>
 #endif 
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
@@ -487,7 +490,7 @@ static int64_t push (FILE *fp, SOCKET sock, SSL *ssl, const char *buf,
             n = (int) send(sock, buf + sent, (size_t)k, MSG_NOSIGNAL);
         }
 
-        if (n < 0) {
+        if (n <= 0) {
             break;
         }
 
@@ -1330,7 +1333,9 @@ static int set_ssl_option (struct mg_context *ctx)
     EST_CTX *ectx;
     SSL_CTX *ssl_ctx;
     EC_KEY *ecdh = NULL;
+#ifndef ENABLE_WOLFSSL
     X509_VERIFY_PARAM *vpm = NULL;
+#endif
     char sic[12] = "EST";
 
 #ifdef HAVE_OLD_OPENSSL
@@ -1413,6 +1418,7 @@ static int set_ssl_option (struct mg_context *ctx)
     SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
     EC_KEY_free(ecdh);
 
+#ifndef ENABLE_WOLFSSL
     /*
      * Setup additional cert checks including CRL, depth
      * and purpose.
@@ -1429,6 +1435,9 @@ static int set_ssl_option (struct mg_context *ctx)
     X509_VERIFY_PARAM_set_purpose(vpm, X509_PURPOSE_SSL_CLIENT);
     SSL_CTX_set1_param(ssl_ctx, vpm);
     X509_VERIFY_PARAM_free(vpm);
+#endif
+
+    wolfSSL_CTX_set_verify_depth(ssl_ctx, EST_TLS_VERIFY_DEPTH);
 
     /*
      * Set the single-use DH parameters if the application
@@ -1442,6 +1451,10 @@ static int set_ssl_option (struct mg_context *ctx)
     }
 
     if (ectx->enable_srp) {
+#ifdef ENABLE_WOLFSSL
+        EST_LOG_ERR("wolfSSL does not support a username callback\n");
+        return 0;
+#else
 	EST_LOG_INFO("Enabling TLS SRP mode\n");
 	if (!SSL_CTX_set_cipher_list(ssl_ctx, EST_CIPHER_LIST_SRP_SERVER)) { 
 	    EST_LOG_ERR("Failed to set SSL cipher suites\n");
@@ -1453,6 +1466,7 @@ static int set_ssl_option (struct mg_context *ctx)
 	 * authentication.
 	 */
 	SSL_CTX_set_srp_username_callback(ssl_ctx, ectx->est_srp_username_cb);
+#endif
     } else {
 	EST_LOG_INFO("TLS SRP not enabled");
 	/*

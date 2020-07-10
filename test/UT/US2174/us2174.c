@@ -464,6 +464,7 @@ void us2174_simple_reenroll (char *cn, char *server,
     p7 = d2i_PKCS7_bio(out, NULL);
     CU_ASSERT(p7 != NULL);
     BIO_free_all(out);
+#ifndef ENABLE_WOLFSSL
     i = OBJ_obj2nid(p7->type);
     switch (i) {
     case NID_pkcs7_signed:
@@ -475,6 +476,9 @@ void us2174_simple_reenroll (char *cn, char *server,
     default:
         break;
     }
+#else
+    certs = wolfSSL_PKCS7_to_stack(p7);
+#endif
     CU_ASSERT(certs != NULL);
     if (!certs)
         return;

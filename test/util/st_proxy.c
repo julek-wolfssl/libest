@@ -19,12 +19,12 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <search.h>
+#include <est.h>
 #include <openssl/err.h>
 #include <openssl/engine.h>
 #include <openssl/conf.h>
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
-#include <est.h>
 #include "ossl_srv.h"
 #include "test_utils.h"
 #include <sys/types.h>
@@ -42,7 +42,9 @@ int proxy_cacerts_len = 0;
 EST_CTX *epctx;
 unsigned char *proxy_trustcerts = NULL;
 int proxy_trustcerts_len = 0;
+#ifndef ENABLE_WOLFSSL
 SRP_VBASE *p_srp_db = NULL;
+#endif
 
 static X509 *x;
 static EVP_PKEY *priv_key;
@@ -249,6 +251,7 @@ static int process_http_auth (EST_CTX *ctx, EST_HTTP_AUTH_HDR *ah,
     return user_valid;
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * This callback is issued during the TLS-SRP handshake.  
  * We can use this to get the userid from the TLS-SRP handshake.
@@ -294,6 +297,7 @@ static int ssl_srp_server_param_cb (SSL *s, int *ad, void *arg) {
     SRP_user_pwd_free(user);    
     return SSL_ERROR_NONE;
 }
+#endif
 
 static void cleanup() 
 {
@@ -307,11 +311,13 @@ static void cleanup()
     if (x) {
         X509_free(x);
     }
-    
+
+#ifndef ENABLE_WOLFSSL
     if (p_srp_db) {
 	SRP_VBASE_free(p_srp_db);
 	p_srp_db = NULL;
     }
+#endif
 
     //We don't shutdown here because there
     //may be other unit test cases in this process
@@ -661,6 +667,7 @@ static int st_proxy_start_internal (int listen_port,
 
     est_enable_crl(epctx);
 
+#ifndef ENABLE_WOLFSSL
     /*
      * Do we need to enable SRP?
      */
@@ -680,6 +687,7 @@ static int st_proxy_start_internal (int listen_port,
             return(-1);
         }
     }
+#endif
 
     /*
      * Are we going to use token mode on the server side of proxy?
@@ -1179,6 +1187,7 @@ int st_proxy_start_nocacerts (int listen_port,
                                    0);
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * Call this to start a simple EST proxy server.  This server will not
  * be thread safe.  It can only handle a single EST request on
@@ -1221,6 +1230,7 @@ int st_proxy_start_srp (int listen_port,
                                    password, server, server_port, enable_pop, 0,
                                    1, vfile, 0, 0, 0, 0, 0, NULL, 0);
 }
+#endif
 
 /*
  * Call this to start a simple EST proxy server with TLS1.0.
@@ -1266,6 +1276,7 @@ int st_proxy_start_tls10 (int listen_port,
                                    ec_nid, 0, NULL, 1, 0, 0, 0, 0, NULL, 0);
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * Call this to start a simple EST proxy server with SRP *and* TLS1.0
  * This server will not
@@ -1309,6 +1320,7 @@ int st_proxy_start_srp_tls10 (int listen_port,
                                    password, server, server_port, enable_pop, 0,
                                    1, vfile, 1, 0, 0, 0, 0, NULL, 0);
 }
+#endif
 
 
 /*

@@ -13,6 +13,11 @@ else
 PTHREAD=-lpthread
 endif
 
+if ENABLED_WOLFSSL
+estproxy_LDFLAGS = -L../../src/est/.libs $(DL) $(PTHREAD) -lest -lwolfssl
+else
 estproxy_LDFLAGS = -L../../src/est/.libs $(DL) $(PTHREAD) -lest -lssl -lcrypto
+endif
+
 
 EXTRA_DIST = createRA.sh runproxy.sh estExampleCA.cnf
