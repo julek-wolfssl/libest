@@ -41,7 +41,7 @@ long curl_http_get (char *url, char *cacert, void *writefunc)
   curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.27.0");
   curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
   curl_easy_setopt(hnd, CURLOPT_CAINFO, cacert);
-  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
   curl_easy_setopt(hnd, CURLOPT_FORBID_REUSE, 1L);
   /*
@@ -139,7 +139,7 @@ long curl_http_post_srp (char *url, char *ct, char *data,
   curl_easy_setopt(hnd, CURLOPT_SSL_ENABLE_ALPN, 0L);
   if (cacert) {
     curl_easy_setopt(hnd, CURLOPT_CAINFO, cacert);
-    curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
   } else {
     curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -242,7 +242,7 @@ long curl_http_post (char *url, char *ct, char *data,
   curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
   curl_easy_setopt(hnd, CURLOPT_HTTPAUTH, authmode);
   curl_easy_setopt(hnd, CURLOPT_CAINFO, cacert);
-  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(hnd, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
   curl_easy_setopt(hnd, CURLOPT_FORBID_REUSE, 1L);
@@ -339,7 +339,7 @@ long curl_http_post_cert (char *url, char *ct, char *data,
   curl_easy_setopt(hnd, CURLOPT_HTTPHEADER, slist1);
   curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
   curl_easy_setopt(hnd, CURLOPT_CAINFO, cacert);
-  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(hnd, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
   curl_easy_setopt(hnd, CURLOPT_SSLCERTTYPE, "PEM");
@@ -425,7 +425,7 @@ long curl_http_post_cert_write (char *url, char *ct, char *data,
   curl_easy_setopt(hnd, CURLOPT_HTTPHEADER, slist1);
   curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
   curl_easy_setopt(hnd, CURLOPT_CAINFO, cacert);
-  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(hnd, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
   curl_easy_setopt(hnd, CURLOPT_SSLCERTTYPE, "PEM");
@@ -519,7 +519,7 @@ long curl_http_post_certuid (char *url, char *ct, char *data,
   curl_easy_setopt(hnd, CURLOPT_HTTPHEADER, slist1);
   curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
   curl_easy_setopt(hnd, CURLOPT_CAINFO, cacert);
-  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(hnd, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
   curl_easy_setopt(hnd, CURLOPT_SSLCERTTYPE, "PEM");
@@ -586,7 +586,7 @@ long curl_http_custom (char *url, char *cacert, char *myrequest, void *writefunc
   curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.27.0");
   curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
   curl_easy_setopt(hnd, CURLOPT_CAINFO, cacert);
-  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
   curl_easy_setopt(hnd, CURLOPT_FORBID_REUSE, 1L);
   curl_easy_setopt(hnd, CURLOPT_CUSTOMREQUEST, myrequest);
