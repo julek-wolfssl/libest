@@ -1408,11 +1408,13 @@ static void* master_thread (void *arg)
     setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (char*)&on, sizeof(on));
     flags = fcntl(sock, F_GETFL, 0);
     fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-    rc = bind(sock, (const struct sockaddr*)&addr, sizeof(addr));
-    if (rc == -1) {
-        fprintf(stderr, "\nbind call failed\n");
-        exit(1);
-    }
+    do {
+        rc = bind(sock, (const struct sockaddr*)&addr, sizeof(addr));
+        if (rc == -1) {
+            fprintf(stderr, "\nbind call failed\n");
+            sleep(1);
+        }
+    } while(rc == -1);
     listen(sock, SOMAXCONN);
     stop_flag = 0;
 

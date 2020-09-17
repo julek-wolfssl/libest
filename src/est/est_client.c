@@ -3085,7 +3085,7 @@ static int est_client_send_cacerts_request (EST_CTX *ctx, SSL *ssl,
             ctx->retrieved_ca_certs[ca_certs_buf_len] = '\0';
             memcpy_s(ctx->retrieved_ca_certs, ca_certs_buf_len+1, ca_certs_buf,
                    ca_certs_buf_len);
-            ctx->retrieved_ca_certs_len = ca_certs_buf_len;
+            ctx->retrieved_ca_certs_len = ca_certs_buf_len+1;
 
             /*
              * Verify the returned CA cert chain
