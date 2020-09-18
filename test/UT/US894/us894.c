@@ -1271,7 +1271,7 @@ static void us894_test26 (void)
 
     sprintf(
         cmd,
-        "openssl base64 -d -in %s | openssl pkcs7 -inform DER -text -print_certs",
+        "base64 -d %s | openssl pkcs7 -inform DER -text -print_certs",
         test26_outfile);
     rv = system(cmd);
     CU_ASSERT(rv == 0);
