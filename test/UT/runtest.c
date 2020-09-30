@@ -286,27 +286,27 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 #endif
-#if (DISABLE_SUITE != 0)
-    rv = us1060_add_suite();
-    if (rv != CUE_SUCCESS) {
-        printf("\nFailed to add test suite for US1060 (%d)", rv);
-        exit(1);
-    }
-#endif
-#ifdef ENABLE_ALL_SUITES
-    rv = us1060c_add_suite();
-    if (rv != CUE_SUCCESS) {
-        printf("\nFailed to add test suite for US1060c (%d)", rv);
-        exit(1);
-    }
-#endif
-#ifdef ENABLE_ALL_SUITES 
-    rv = us1159_add_suite();
-    if (rv != CUE_SUCCESS) {
-        printf("\nFailed to add test suite for US1159 (%d)", rv);
-        exit(1);
-    }
-#endif
+//#if (DISABLE_SUITE != 0)
+//    rv = us1060_add_suite();
+//    if (rv != CUE_SUCCESS) {
+//        printf("\nFailed to add test suite for US1060 (%d)", rv);
+//        exit(1);
+//    }
+//#endif
+//#ifdef ENABLE_ALL_SUITES
+//    rv = us1060c_add_suite();
+//    if (rv != CUE_SUCCESS) {
+//        printf("\nFailed to add test suite for US1060c (%d)", rv);
+//        exit(1);
+//    }
+//#endif
+//#ifdef ENABLE_ALL_SUITES
+//    rv = us1159_add_suite();
+//    if (rv != CUE_SUCCESS) {
+//        printf("\nFailed to add test suite for US1159 (%d)", rv);
+//        exit(1);
+//    }
+//#endif
 #ifdef ENABLE_ALL_SUITES
     rv = us1190_add_suite();
     if (rv != CUE_SUCCESS) {
