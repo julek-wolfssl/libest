@@ -622,7 +622,7 @@ static void us5241_test2 (void)
      * Since we passed in a valid userID/password,
      * we expect the server to respond with 200
      */
-    CU_ASSERT(rv == 400);
+    CU_ASSERT(rv == 200);
 }
 
 /*

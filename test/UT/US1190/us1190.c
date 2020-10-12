@@ -140,6 +140,7 @@ static void us1190_test_sslversion (const SSL_METHOD *m,
      */
     ssl = SSL_new(ssl_ctx);
     SSL_set_bio(ssl, conn, conn);
+    SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL);
 
     /*
      * Now that we have everything ready, let's initiate the TLS

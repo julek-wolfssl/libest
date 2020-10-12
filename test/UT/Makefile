@@ -15,8 +15,6 @@ SRC =  	runtest.c \
 	US903/us903.c \
 	US1005/us1005.c \
 	US1159/us1159.c \
-	US1060/us1060.c \
-	US1060/us1060c.c \
 	US1190/us1190.c \
 	US1864/us1864.c \
 	US1883/us1883.c \
@@ -93,19 +91,20 @@ ifdef ENABLE_BRSKI
 endif    
 
 # include directories
-INCLUDES = -I../../src/est -I../.. -I../util -I$(OPENSSL_DIR)/include -I$(CURL_DIR)/include -I$(CUNIT_DIR)/include -I$(URIPARSER_DIR)/include -I$(LIBCOAP_DIR)/include
+INCLUDES = -I../../src/est -I../.. -I../util -I$(OPENSSL_DIR)/include -I$(OPENSSL_DIR)/include/wolfssl -I$(CURL_DIR)/include -I$(CUNIT_DIR)/include -I$(URIPARSER_DIR)/include -I$(LIBCOAP_DIR)/include
 
 # C++ compiler flags (-g -O2 -Wall)
-CCFLAGS = -Wall -g -DHAVE_CUNIT -DNO_SSL_DL $(CURL_CC_DEFINE) $(CFLAGS) 
+CCFLAGS = -Wall -g -DHAVE_CUNIT -DNO_SSL_DL -DENABLE_WOLFSSL $(CURL_CC_DEFINE) $(CFLAGS) 
 
 # compiler
+#CC = gcc -fsanitize=address
 CC = gcc
 
 # linker flags
-LDFLAGS += -lcunit -ldl -lpthread -lssl -lcrypto -lest -lcurl $(URIPARSER_LDFLAGS)
+LDFLAGS += -lcunit -ldl -lpthread -lwolfssl -lest -lsafe_lib -lcurl $(URIPARSER_LDFLAGS)
 
 # library paths
-LIBS = -L../../src/est/.libs -L$(URIPARSER_DIR)/lib -L$(OPENSSL_DIR)/lib -L$(CURL_DIR)/lib -L$(CUNIT_DIR)/lib $(LDFLAGS)
+LIBS = -L../../src/est/.libs -L../../safe_c_stub/lib -L$(URIPARSER_DIR)/lib -L$(OPENSSL_DIR)/lib -L$(CURL_DIR)/lib -L$(CUNIT_DIR)/lib $(LDFLAGS)
 
 
 

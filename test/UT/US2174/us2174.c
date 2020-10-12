@@ -566,6 +566,7 @@ void us2174_stop_server ()
 static int us2174_init_suite (void)
 {
     int rv;
+    sleep(2);
 
     est_init_logger(EST_LOG_LVL_INFO, NULL);
 

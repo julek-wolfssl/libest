@@ -169,7 +169,7 @@ EST_ERROR est_enhcd_cert_auth_get_mfg (EST_CTX *ctx, X509 *peer,
 
             rv = X509_verify_cert(cur_mfg_info->store_ctx);
             X509_STORE_CTX_cleanup(cur_mfg_info->store_ctx);
-            if (!rv) {
+            if (rv <= 0) {
                 /*
                  * this cert failed verification.  Log this and continue on
                  */

@@ -497,13 +497,7 @@ static BIO * est_get_certs_pkcs7 (BIO *in, int do_base_64)
     /*
      * Create a PKCS7 object 
      */
-    if ((p7 =
-#ifndef ENABLE_WOLFSSL
-            PKCS7_new()
-#else
-            wolfSSL_PKCS7_SIGNED_new()
-#endif
-            ) == NULL) {
+    if ((p7 = PKCS7_new()) == NULL) {
         EST_LOG_ERR("pkcs7_new failed");
 	goto cleanup;
     }
@@ -1230,14 +1224,13 @@ EST_ERROR est_enable_crl (EST_CTX *ctx)
         SSL_CTX_set1_param(ctx->ssl_ctx, vpm);
     }
 #else
-    {
+    if (ctx->est_mode == EST_CLIENT) {
         WOLFSSL_X509_STORE* ctx_store =
                 wolfSSL_CTX_get_cert_store(ctx->ssl_ctx);
         if (wolfSSL_X509_STORE_set_flags(ctx_store,
                 WOLFSSL_CRL_CHECKALL | WOLFSSL_CRL_CHECK)
                 != WOLFSSL_SUCCESS) {
             EST_LOG_ERR("wolfSSL_X509_STORE_set_flags error");
-            return (EST_ERR_NO_CTX);
         }
     }
 #endif

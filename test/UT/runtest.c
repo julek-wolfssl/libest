@@ -149,6 +149,7 @@ int main(int argc, char *argv[]) {
 #ifdef HAVE_OLD_OPENSSL
     int i;
 #endif
+    wolfSSL_Debugging_ON();
 
     if (argc >= 2 && !strcmp(argv[1], "-xml")) {
         xml = 1;
@@ -286,27 +287,31 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 #endif
-//#if (DISABLE_SUITE != 0)
-//    rv = us1060_add_suite();
-//    if (rv != CUE_SUCCESS) {
-//        printf("\nFailed to add test suite for US1060 (%d)", rv);
-//        exit(1);
-//    }
-//#endif
-//#ifdef ENABLE_ALL_SUITES
-//    rv = us1060c_add_suite();
-//    if (rv != CUE_SUCCESS) {
-//        printf("\nFailed to add test suite for US1060c (%d)", rv);
-//        exit(1);
-//    }
-//#endif
-//#ifdef ENABLE_ALL_SUITES
-//    rv = us1159_add_suite();
-//    if (rv != CUE_SUCCESS) {
-//        printf("\nFailed to add test suite for US1159 (%d)", rv);
-//        exit(1);
-//    }
-//#endif
+#ifndef ENABLE_WOLFSSL
+    /* No SRP support in OpenSSL compat layer */
+#if (DISABLE_SUITE != 0)
+    rv = us1060_add_suite();
+    if (rv != CUE_SUCCESS) {
+        printf("\nFailed to add test suite for US1060 (%d)", rv);
+        exit(1);
+    }
+#endif
+#ifdef ENABLE_ALL_SUITES
+    rv = us1060c_add_suite();
+    if (rv != CUE_SUCCESS) {
+        printf("\nFailed to add test suite for US1060c (%d)", rv);
+        exit(1);
+    }
+#endif
+    /* wolfSSL doesn't support arbitrary attributes in CSR */
+#ifdef ENABLE_ALL_SUITES
+    rv = us1159_add_suite();
+    if (rv != CUE_SUCCESS) {
+        printf("\nFailed to add test suite for US1159 (%d)", rv);
+        exit(1);
+    }
+#endif
+#endif /* ENABLE_WOLFSSL */
 #ifdef ENABLE_ALL_SUITES
     rv = us1190_add_suite();
     if (rv != CUE_SUCCESS) {
@@ -429,12 +434,15 @@ int main(int argc, char *argv[]) {
     }
 #endif
 #endif
+#ifndef ENABLE_WOLFSSL
+/* This test relies on weird cert handling by OpenSSL so let's ignore it for now */
 #ifdef ENABLE_ALL_SUITES
     rv = us5121_add_suite();
     if (rv != CUE_SUCCESS) {
         printf("\nFailed to add test suite for US5121 (%d)", rv);
         exit(1);
     }
+#endif
 #endif
 #ifdef ENABLE_ALL_SUITES
 #ifdef HAVE_LIBCOAP
@@ -532,12 +540,15 @@ int main(int argc, char *argv[]) {
     }
 #endif
 #endif
+#ifndef ENABLE_WOLFSSL
+/* This test relies on weird cert handling by OpenSSL so let's ignore it for now */
 #ifdef ENABLE_ALL_SUITES
     rv = us5248http_add_suite();
     if (rv != CUE_SUCCESS) {
         printf("\nFailed to add test suite for US5248 (%d)", rv);
         exit(1);
     }
+#endif
 #endif
 #ifdef ENABLE_ALL_SUITES
 #ifdef HAVE_LIBCOAP

@@ -613,7 +613,7 @@ static EST_ERROR verify_cacert_resp (EST_CTX *ctx, unsigned char *cacerts,
         }
         
         rv = X509_verify_cert(store_ctx);
-        if (!rv) {
+        if (rv <= 0) {
             /*
              * this cert failed verification.  Log this and continue on
              */
@@ -874,9 +874,9 @@ static EST_ERROR est_client_init_ssl_ctx (EST_CTX *ctx)
 
     SSL_CTX_set1_param(s_ctx, vpm);
     X509_VERIFY_PARAM_free(vpm);
-#endif
-
+#else
     wolfSSL_CTX_set_verify_depth(s_ctx, EST_TLS_VERIFY_DEPTH);
+#endif
 
     /*
      * Save the reference to the SSL session
