@@ -128,7 +128,11 @@ char *generate_private_EC_key (int curve_nid, pem_password_cb *cb)
     EC_GROUP *group = NULL;
     char *key_data = NULL;
     int asn1_flag = OPENSSL_EC_NAMED_CURVE;
+#ifndef ENABLE_WOLFSSL
     point_conversion_form_t form = POINT_CONVERSION_UNCOMPRESSED;
+#else
+    char form = POINT_CONVERSION_UNCOMPRESSED;
+#endif
 
     /*
      * Generate an EC key

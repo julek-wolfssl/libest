@@ -197,7 +197,11 @@ static EVP_PKEY * generate_ec_private_key (int nid)
     BIO *keyin;
     EVP_PKEY *new_priv_key;
     int asn1_flag = OPENSSL_EC_NAMED_CURVE;
+#ifndef ENABLE_WOLFSSL
     point_conversion_form_t form = POINT_CONVERSION_UNCOMPRESSED;
+#else
+    char form = POINT_CONVERSION_UNCOMPRESSED;
+#endif
 
     /*
      * Generate an EC key
@@ -349,6 +353,9 @@ static EST_ERROR populate_x509_request (X509_REQ *req, EVP_PKEY *pkey, char *cn)
         return (EST_ERR_X509_CN);
     }
 
+#ifndef ENABLE_WOLFSSL
+    /* Ignore X509_REQ_add1_attr_by_txt attributes */
+
     /*
      * Add all the other attributes that the server will be expecting
      */
@@ -407,6 +414,7 @@ static EST_ERROR populate_x509_request (X509_REQ *req, EVP_PKEY *pkey, char *cn)
         ERR_print_errors_fp(stderr);
         return (EST_ERR_UNKNOWN);
     }
+#endif
 
     rv = X509_REQ_add1_attr_by_NID(req, NID_serialNumber, MBSTRING_ASC,
         (const unsigned char*) "123456789A", -1);

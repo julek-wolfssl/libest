@@ -185,6 +185,7 @@ static int us893_destory_suite (void)
     st_stop();
     st_proxy_stop();
     free(cacerts);
+    cacerts = NULL;
     return 0;
 }
 

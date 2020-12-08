@@ -44,6 +44,9 @@
 #else
 #include <sys/poll.h>
 #endif
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <assert.h>

@@ -19,12 +19,12 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <search.h>
+#include <est.h>
 #include <openssl/err.h>
 #include <openssl/engine.h>
 #include <openssl/conf.h>
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
-#include <est.h>
 #include "ossl_srv.h"
 #include "test_utils.h"
 #include <sys/types.h>
@@ -42,7 +42,9 @@ int proxy_cacerts_len = 0;
 EST_CTX *epctx;
 unsigned char *proxy_trustcerts = NULL;
 int proxy_trustcerts_len = 0;
+#ifndef ENABLE_WOLFSSL
 SRP_VBASE *p_srp_db = NULL;
+#endif
 
 static X509 *x;
 static EVP_PKEY *priv_key;
@@ -249,6 +251,7 @@ static int process_http_auth (EST_CTX *ctx, EST_HTTP_AUTH_HDR *ah,
     return user_valid;
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * This callback is issued during the TLS-SRP handshake.  
  * We can use this to get the userid from the TLS-SRP handshake.
@@ -294,24 +297,40 @@ static int ssl_srp_server_param_cb (SSL *s, int *ad, void *arg) {
     SRP_user_pwd_free(user);    
     return SSL_ERROR_NONE;
 }
+#endif
 
 static void cleanup() 
 {
-    est_proxy_stop(epctx);
-    est_destroy(epctx);
-    free(proxy_cacerts_raw);
-    free(proxy_trustcerts);
-    if (priv_key) {
-        EVP_PKEY_free(priv_key);
+    EST_CTX *_epctx = epctx;
+    unsigned char *_proxy_cacerts_raw = proxy_cacerts_raw;
+    unsigned char *_proxy_trustcerts = proxy_trustcerts;
+    EVP_PKEY *_priv_key = priv_key;
+    X509 *_x = x;
+
+    /* NULL so that they can be safely free'd */
+    epctx = NULL;
+    proxy_cacerts_raw = NULL;
+    proxy_trustcerts = NULL;
+    priv_key = NULL;
+    x = NULL;
+
+    est_proxy_stop(_epctx);
+    est_destroy(_epctx);
+    free(_proxy_cacerts_raw);
+    free(_proxy_trustcerts);
+    if (_priv_key) {
+        EVP_PKEY_free(_priv_key);
     }
-    if (x) {
-        X509_free(x);
+    if (_x) {
+        X509_free(_x);
     }
-    
+
+#ifndef ENABLE_WOLFSSL
     if (p_srp_db) {
 	SRP_VBASE_free(p_srp_db);
 	p_srp_db = NULL;
     }
+#endif
 
     //We don't shutdown here because there
     //may be other unit test cases in this process
@@ -388,72 +407,79 @@ static void* master_thread (void *arg)
     unsigned char recv_char;
 #endif
 
-
-    memset(&addr, 0x0, sizeof(struct sockaddr_in6));
-    addr.sin6_family = AF_INET6;
-    addr.sin6_port = htons((uint16_t)tcp_port);
-    
-    if (coap_enabled) {
-        sock = socket(AF_INET6, SOCK_DGRAM, 0);
-    } else {
-        sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);        
-    }
-    if (sock == -1) {
-        fprintf(stderr, "\nsocket call failed\n");
-        exit(1);
-    }
-
-    // Needs to be done to bind to both :: and 0.0.0.0 to the same port
-    int no = 0;
-    setsockopt(sock, SOL_SOCKET, IPV6_V6ONLY, (void *)&no, sizeof(no));
-
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
-    setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (char*)&on, sizeof(on));
-    flags = fcntl(sock, F_GETFL, 0);
-    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-    rc = bind(sock, (const struct sockaddr*)&addr, sizeof(addr));
-    if (rc == -1) {
-        fprintf(stderr, "\nbind call failed\n");
-        exit(1);
-    }
-    listen(sock, SOMAXCONN);
-    stop_proxy_flag = 0;
-
-    while (stop_proxy_flag == 0) {
+    do {
+        memset(&addr, 0x0, sizeof(struct sockaddr_in6));
+        addr.sin6_family = AF_INET6;
+        addr.sin6_port = htons((uint16_t)tcp_port);
         
         if (coap_enabled) {
-#ifdef HAVE_LIBCOAP
-            rc = recv(sock, (void *) &recv_char, 1, MSG_PEEK);
-#else       
-            fprintf(stderr, "\nLibCoAP is not included in this build\n");
-            exit(1);
-#endif
+            sock = socket(AF_INET6, SOCK_DGRAM, 0);
         } else {
-            len = sizeof(addr);
-            rc = accept(sock, (struct sockaddr*)&addr, &len);
+            sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+        }
+        if (sock == -1) {
+            fprintf(stderr, "\nsocket call failed\n");
+            exit(1);
         }
 
-        if (rc < 0) {
-	    /*
-	     * this is a bit cheesy, but much easier to implement than using select()
-	     */
-            usleep(100);
-        } else {
-            if (stop_proxy_flag == 0) {
+        // Needs to be done to bind to both :: and 0.0.0.0 to the same port
+        int no = 0;
+        setsockopt(sock, SOL_SOCKET, IPV6_V6ONLY, (void *)&no, sizeof(no));
 
-                if (coap_enabled) {
-#ifdef HAVE_LIBCOAP
-                    est_server_handle_request(epctx, sock);
-#endif
-                } else {
-                    new = rc;
-                    est_server_handle_request(epctx, new);
-                    close(new);
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
+        setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (char*)&on, sizeof(on));
+        flags = fcntl(sock, F_GETFL, 0);
+        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+        do {
+            rc = bind(sock, (const struct sockaddr*)&addr, sizeof(addr));
+            if (rc == -1) {
+                fprintf(stderr, "\nbind call failed\n");
+                sleep(1);
+            }
+        } while (rc == -1);
+        listen(sock, SOMAXCONN);
+        stop_proxy_flag = 0;
+
+        while (stop_proxy_flag == 0) {
+
+            if (coap_enabled) {
+    #ifdef HAVE_LIBCOAP
+                rc = recv(sock, (void *) &recv_char, 1, MSG_PEEK);
+    #else
+                fprintf(stderr, "\nLibCoAP is not included in this build\n");
+                exit(1);
+    #endif
+            } else {
+                len = sizeof(addr);
+                rc = accept(sock, (struct sockaddr*)&addr, &len);
+            }
+
+            if (rc < 0) {
+            /*
+             * this is a bit cheesy, but much easier to implement than using select()
+             */
+                if (errno != EAGAIN) {
+                    fprintf(stderr, "\nErrno was %d\n", errno);
+                    break;
+                }
+                usleep(100);
+            } else {
+                if (stop_proxy_flag == 0) {
+
+                    if (coap_enabled) {
+    #ifdef HAVE_LIBCOAP
+                        est_server_handle_request(epctx, sock);
+    #endif
+                    } else {
+                        new = rc;
+                        est_server_handle_request(epctx, new);
+                        close(new);
+                    }
                 }
             }
         }
-    }
-    close(sock);
+        close(sock);
+    } while(stop_proxy_flag == 0);
     cleanup();
     return NULL;
 }
@@ -465,7 +491,7 @@ static void* master_thread (void *arg)
 void st_proxy_stop ()
 {
     stop_proxy_flag = 1;
-    sleep(2);
+    sleep(3);
 }
 
 static int st_proxy_start_internal (int listen_port,
@@ -661,6 +687,7 @@ static int st_proxy_start_internal (int listen_port,
 
     est_enable_crl(epctx);
 
+#ifndef ENABLE_WOLFSSL
     /*
      * Do we need to enable SRP?
      */
@@ -680,6 +707,7 @@ static int st_proxy_start_internal (int listen_port,
             return(-1);
         }
     }
+#endif
 
     /*
      * Are we going to use token mode on the server side of proxy?
@@ -1179,6 +1207,7 @@ int st_proxy_start_nocacerts (int listen_port,
                                    0);
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * Call this to start a simple EST proxy server.  This server will not
  * be thread safe.  It can only handle a single EST request on
@@ -1221,6 +1250,7 @@ int st_proxy_start_srp (int listen_port,
                                    password, server, server_port, enable_pop, 0,
                                    1, vfile, 0, 0, 0, 0, 0, NULL, 0);
 }
+#endif
 
 /*
  * Call this to start a simple EST proxy server with TLS1.0.
@@ -1266,6 +1296,7 @@ int st_proxy_start_tls10 (int listen_port,
                                    ec_nid, 0, NULL, 1, 0, 0, 0, 0, NULL, 0);
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * Call this to start a simple EST proxy server with SRP *and* TLS1.0
  * This server will not
@@ -1309,6 +1340,7 @@ int st_proxy_start_srp_tls10 (int listen_port,
                                    password, server, server_port, enable_pop, 0,
                                    1, vfile, 1, 0, 0, 0, 0, NULL, 0);
 }
+#endif
 
 
 /*

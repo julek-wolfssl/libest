@@ -10,6 +10,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
@@ -21,7 +24,7 @@
  */
 #define EST_PRIVATE_KEY_ENC EVP_aes_128_cbc()
 
-
+#if 0
 /*
  * This function can be used to output the OpenSSL
  * error buffer.  This is useful when an OpenSSL
@@ -42,9 +45,10 @@ void ossl_dump_ssl_errors ()
     ERR_print_errors(e);
     (void)BIO_flush(e);
     BIO_get_mem_ptr(e, &bptr);
-    printf("\nOSSL error: %s\n", bptr->data); 
+    printf("\nOSSL error: %s\n", bptr->data);
     BIO_free_all(e);
 }
+#endif
 
 /*
  * Reads a file into an unsigned char array.
@@ -200,7 +204,11 @@ char *generate_private_EC_key (int curve_nid, pem_password_cb *cb)
     EC_GROUP *group = NULL;
     char *key_data = NULL;
     int asn1_flag = OPENSSL_EC_NAMED_CURVE;
+#ifndef ENABLE_WOLFSSL
     point_conversion_form_t form = POINT_CONVERSION_UNCOMPRESSED;
+#else
+    char form = POINT_CONVERSION_UNCOMPRESSED;
+#endif
 
     /*
      * Generate an EC key
@@ -216,7 +224,11 @@ char *generate_private_EC_key (int curve_nid, pem_password_cb *cb)
         return NULL;
     }
     EC_GROUP_set_asn1_flag(group, asn1_flag);
+#ifndef ENABLE_WOLFSSL
     EC_GROUP_set_point_conversion_form(group, form);
+#else
+    EC_KEY_set_conv_form(eckey, form);
+#endif
     EC_KEY_set_group(eckey, group);
     if (!EC_KEY_set_group(eckey, group)) {
         return NULL;
@@ -230,7 +242,9 @@ char *generate_private_EC_key (int curve_nid, pem_password_cb *cb)
         if (!out) {
             break;
         }
+#ifndef ENABLE_WOLFSSL
         PEM_write_bio_ECPKParameters(out, group);
+#endif
         PEM_write_bio_ECPrivateKey(out, eckey, cb ? EST_PRIVATE_KEY_ENC : NULL, NULL, 0, cb, NULL);
         key_data = (char *)BIO_copy_data(out, NULL);
         BIO_free(out);

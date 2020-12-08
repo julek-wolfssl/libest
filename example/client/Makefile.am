@@ -14,8 +14,14 @@ else
 PTHREAD=-lpthread
 endif
 
-if ENABLE_CLIENT_ONLY 
-estclient_LDFLAGS = -L../../src/est/.libs $(DL) $(PTHREAD) -lest_client -lssl -lcrypto
+if ENABLED_WOLFSSL
+CRYPTOLIB=-lwolfssl
 else
-estclient_LDFLAGS = -L../../src/est/.libs $(DL) $(PTHREAD) -lest -lssl -lcrypto
+CRYPTOLIB=-lssl -lcrypto
+endif
+
+if ENABLE_CLIENT_ONLY 
+estclient_LDFLAGS = -L../../src/est/.libs $(DL) $(PTHREAD) -lest_client $(CRYPTOLIB)
+else
+estclient_LDFLAGS = -L../../src/est/.libs $(DL) $(PTHREAD) -lest $(CRYPTOLIB)
 endif

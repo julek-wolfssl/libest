@@ -7,6 +7,7 @@
  * All rights reserved.
  *------------------------------------------------------------------
  */
+#include <est.h>
 #include <stdio.h>
 #ifndef WIN32
 #include <unistd.h>
@@ -23,7 +24,6 @@
 #include <netdb.h>
 #include <regex.h>
 #endif 
-#include <est.h>
 
 #define EST_PRIVATE_KEY_ENC EVP_aes_128_cbc()
 

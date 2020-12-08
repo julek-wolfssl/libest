@@ -25,6 +25,9 @@
 #include <pthread.h>
 #endif
 #include <getopt.h>
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <est.h>
@@ -110,7 +113,9 @@ unsigned char *enhcd_cert_truststore = NULL;
 int enhcd_cert_truststore_len = 0;
 char path_seg[EST_MAX_PATH_SEGMENT_LEN + 1];
 
+#ifndef ENABLE_WOLFSSL
 SRP_VBASE *srp_db = NULL;
+#endif
 
 static char valid_token_value[MAX_AUTH_TOKEN_LEN];
 
@@ -311,6 +316,7 @@ static EST_HTTP_AUTH_CRED_RC auth_credentials_token_cb (
     return (EST_HTTP_AUTH_CRED_NOT_AVAILABLE);
 }
 
+#ifndef ENABLE_WOLFSSL
 /*
  * This callback is issued during the TLS-SRP handshake.  
  * We can use this to get the userid from the TLS-SRP handshake.
@@ -357,6 +363,7 @@ static int process_ssl_srp_auth (SSL *s, int *ad, void *arg)
     fflush(stdout);
     return SSL_ERROR_NONE;
 }
+#endif
 
 #ifdef HAVE_OLD_OPENSSL
 /*
@@ -400,9 +407,11 @@ void cleanup (void)
     
     est_proxy_stop(ectx);
     est_destroy(ectx);
+#ifndef ENABLE_WOLFSSL
     if (srp_db) {
         SRP_VBASE_free(srp_db);
     }
+#endif
     free(cacerts_raw);
     free(trustcerts);
     free(enhcd_cert_truststore);
@@ -861,6 +870,7 @@ int main (int argc, char **argv)
 
     est_proxy_set_server(ectx, est_server, est_server_port);
 
+#ifndef ENABLE_WOLFSSL
     if (srp) {
         srp_db = SRP_VBASE_new(NULL);
         if (!srp_db) {
@@ -877,6 +887,7 @@ int main (int argc, char **argv)
             exit(1);
         }
     }
+#endif
 
     if (client_token_auth_mode) {
         rv = est_proxy_set_auth_cred_cb(ectx, auth_credentials_token_cb);

@@ -80,11 +80,48 @@ AM_COND_IF([DISABLE_PTHREAD], [],
 	    [AC_CHECK_LIB([pthread], [pthread_create], [],
              [AC_MSG_FAILURE([can't find pthread lib])])])
 
+
+AC_ARG_ENABLE([wolfssl],
+    [AS_HELP_STRING([--enable-wolfssl],
+    	[Use wolfssl instead of OpenSSL])],
+    [ use_wolfssl=1 ],
+    [ use_wolfssl=0 ]
+    )
+AM_CONDITIONAL([ENABLED_WOLFSSL], [test x$use_wolfssl = x1])
+
+AC_ARG_WITH([with-wolfssl],
+	    [AS_HELP_STRING([--with-wolfssl],
+		[location of the wolfSSL install folder, defaults to /usr/local])],
+	    [wolfssldir="$withval"],
+	    [wolfssldir="/usr/local"])
+
 AC_ARG_WITH([ssl-dir],
 	    [AS_HELP_STRING([--with-ssl-dir],
 		[location of OpenSSL install folder, defaults to /usr/local/ssl])],
 	    [ssldir="$withval"],
 	    [ssldir="/usr/local/ssl"])
+
+if test x$use_wolfssl = x1 ; then
+AC_SUBST([SSL_CFLAGS], "$wolfssldir/include -I$wolfssldir/include/wolfssl")
+AC_SUBST([SSL_LDFLAGS], "$wolfssldir/lib")
+
+CFLAGS="$CFLAGS -Wall -I$wolfssldir/include -I$wolfssldir/include/wolfssl"
+LDFLAGS="$LDFLAGS -L$wolfssldir/lib"
+
+if test "$is_freebsd" = "1" ; then
+AC_CHECK_LIB([wolfssl], [wolfSSL_EVP_EncryptInit], [],
+             [AC_MSG_FAILURE([can't find wolfSSL_EVP_EncryptInit symbol])]
+	     [])
+else
+AC_CHECK_LIB([wolfssl], [wolfSSL_EVP_EncryptInit], [],
+             [AC_MSG_FAILURE([can't find wolfSSL_EVP_EncryptInit symbol])]
+	     [-ldl])
+fi
+AC_CHECK_LIB([wolfssl], [wolfSSL_CTX_new], [],
+             [AC_MSG_FAILURE([can't find wolfSSL_CTX_new symbol])])
+
+AC_DEFINE([ENABLE_WOLFSSL],[1],[Define if you want to use wolfSSL])
+else
 AC_SUBST([SSL_CFLAGS], "$ssldir/include")
 AC_SUBST([SSL_LDFLAGS], "$ssldir/lib")
 
@@ -108,6 +145,7 @@ AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset], [],
              [])
 #AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset], [],
 #             [AC_MSG_FAILURE([can't find openssl ssl lib])])
+fi
 
 
 # Conditionally include use of libcurl for client proxy support

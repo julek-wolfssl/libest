@@ -8,8 +8,14 @@ else
 DL=-ldl
 endif
 
-if ENABLE_CLIENT_ONLY 
-estclient_simple_LDFLAGS = -L../../src/est/.libs $(DL) -lest_client -lssl -lcrypto
+if ENABLED_WOLFSSL
+CRYPTOLIB=-lwolfssl
 else
-estclient_simple_LDFLAGS = -L../../src/est/.libs $(DL) -lest -lssl -lcrypto
+CRYPTOLIB=-lssl -lcrypto
+endif
+
+if ENABLE_CLIENT_ONLY 
+estclient_simple_LDFLAGS = -L../../src/est/.libs $(DL) -lest_client $(CRYPTOLIB)
+else
+estclient_simple_LDFLAGS = -L../../src/est/.libs $(DL) -lest $(CRYPTOLIB)
 endif

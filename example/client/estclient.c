@@ -22,6 +22,9 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/crypto.h>
@@ -359,8 +362,10 @@ EST_HTTP_AUTH_CRED_RC auth_credentials_digest_cb(EST_HTTP_AUTH_HDR *auth_credent
 
 static int client_manual_cert_verify(X509 *cur_cert, int openssl_cert_error)
 {
+#ifndef ENABLE_WOLFSSL
     const ASN1_BIT_STRING *cur_cert_sig;
     const X509_ALGOR *cur_cert_sig_alg;
+#endif
     
     if (openssl_cert_error == X509_V_ERR_UNABLE_TO_GET_CRL) {
         return 1; // accepted
@@ -384,6 +389,7 @@ static int client_manual_cert_verify(X509 *cur_cert, int openssl_cert_error)
      * This fingerprint can be checked against the anticipated value to determine
      * whether or not the server's cert should be approved.
      */
+#ifndef ENABLE_WOLFSSL /* signature should be printed in X509_print_fp call */
 #ifdef HAVE_OLD_OPENSSL    
     X509_get0_signature((ASN1_BIT_STRING **)&cur_cert_sig,
                         (X509_ALGOR **)&cur_cert_sig_alg, cur_cert);
@@ -393,6 +399,7 @@ static int client_manual_cert_verify(X509 *cur_cert, int openssl_cert_error)
     X509_get0_signature(&cur_cert_sig, &cur_cert_sig_alg, cur_cert);
     X509_signature_print(bio_err, cur_cert_sig_alg, cur_cert_sig);
 #endif    
+#endif
 
     BIO_free(bio_err);
 

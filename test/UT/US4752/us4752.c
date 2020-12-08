@@ -216,6 +216,7 @@ static int us4752_destroy_suite (void)
 {
     st_stop();
     free(cacerts);
+    cacerts = NULL;
     return 0;
 }
 

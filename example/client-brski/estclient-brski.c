@@ -14,6 +14,9 @@
 #include "stdio.h"
 #include <getopt.h>
 
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#endif
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/crypto.h>

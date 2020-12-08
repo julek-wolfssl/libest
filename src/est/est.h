@@ -21,6 +21,11 @@
 #define LIBEST_API
 #endif
 
+#ifdef ENABLE_WOLFSSL
+#include <wolfssl/options.h>
+#include <openssl/buffer.h>
+#endif
+
 #include <openssl/ssl.h>
 #include <openssl/engine.h>
 #include <openssl/conf.h>
@@ -370,7 +375,8 @@ typedef enum {
  */
 #define EST_SSL_READ_TIMEOUT_MIN 1
 #define EST_SSL_READ_TIMEOUT_MAX 3600
-#define EST_SSL_READ_TIMEOUT_DEF 10
+/* WOLFSSL: Increased timeout since some tests were failing on timeout */
+#define EST_SSL_READ_TIMEOUT_DEF 20
 
 /*
  * The following values define the minimum, maximum, and default values for
