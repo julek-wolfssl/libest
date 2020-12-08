@@ -61,8 +61,8 @@ SRC =  	runtest.c \
 OBJ = $(SRC:.c=.o)
 OUT = runtest
 
-ifndef OPENSSL_DIR
-    OPENSSL_DIR=/usr/local/ssl
+ifndef WOLFSSL_DIR
+    WOLFSSL_DIR=/usr/local/
 endif
 ifndef CURL_DIR
     CURL_DIR=/usr/local/curl
@@ -91,7 +91,7 @@ ifdef ENABLE_BRSKI
 endif    
 
 # include directories
-INCLUDES = -I../../src/est -I../.. -I../util -I$(OPENSSL_DIR)/include -I$(OPENSSL_DIR)/include/wolfssl -I$(CURL_DIR)/include -I$(CUNIT_DIR)/include -I$(URIPARSER_DIR)/include -I$(LIBCOAP_DIR)/include
+INCLUDES = -I../../src/est -I../.. -I../util -I$(WOLFSSL_DIR)/include -I$(WOLFSSL_DIR)/include/wolfssl -I$(CURL_DIR)/include -I$(CUNIT_DIR)/include -I$(URIPARSER_DIR)/include -I$(LIBCOAP_DIR)/include
 
 # C++ compiler flags (-g -O2 -Wall)
 CCFLAGS = -Wall -g -DHAVE_CUNIT -DNO_SSL_DL -DENABLE_WOLFSSL $(CURL_CC_DEFINE) $(CFLAGS) 
@@ -104,7 +104,7 @@ CC = gcc
 LDFLAGS += -lcunit -ldl -lpthread -lwolfssl -lest -lsafe_lib -lcurl $(URIPARSER_LDFLAGS)
 
 # library paths
-LIBS = -L../../src/est/.libs -L../../safe_c_stub/lib -L$(URIPARSER_DIR)/lib -L$(OPENSSL_DIR)/lib -L$(CURL_DIR)/lib -L$(CUNIT_DIR)/lib $(LDFLAGS)
+LIBS = -Wl,-rpath ../../src/est/.libs -L../../src/est/.libs -L../../safe_c_stub/lib -L$(URIPARSER_DIR)/lib -L$(WOLFSSL_DIR)/lib -L$(CURL_DIR)/lib -L$(CUNIT_DIR)/lib $(LDFLAGS)
 
 
 
